@@ -57,10 +57,12 @@ module CliDownloaderBot
 
       def status_text
         last_url = session.profile['last_requested_url'] || 'пока нет'
+        last_file = session.profile['last_downloaded_file'] || 'пока нет'
 
         <<~TEXT
           Текущее состояние: #{session.state}
           Последняя ссылка: #{last_url}
+          Последний файл: #{last_file}
           Интеграция с гемом: #{gateway.description}
         TEXT
       end

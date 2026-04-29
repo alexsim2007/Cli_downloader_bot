@@ -16,7 +16,10 @@ module CliDownloaderBot
       configuration.validate!
 
       session_store = SessionStore.new(path: configuration.state_path)
-      gateway = DownloaderGateway.build(gem_path: configuration.gem_path)
+      gateway = DownloaderGateway.build(
+        gem_path: configuration.gem_path,
+        output_directory: configuration.downloads_path
+      )
       intake_service = DownloadIntakeService.new(gateway: gateway)
 
       Telegram::Bot::Client.run(configuration.token, logger: configuration.logger) do |bot|

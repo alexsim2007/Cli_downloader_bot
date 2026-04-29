@@ -17,7 +17,7 @@ module CliDownloaderBot
           session.transition_to('awaiting_url')
           send_message(
             message.chat.id,
-            'Пришли ссылку на файл или видео. Пока мы только сохраняем запрос в каркас.'
+            'Пришли ссылку на файл или видео. Бот попробует сразу скачать файл через CLI_downloader.'
           )
         when '/status', 'Статус'
           send_message(message.chat.id, status_text)
@@ -45,7 +45,7 @@ module CliDownloaderBot
       def welcome_text
         <<~TEXT
           База Telegram-бота готова.
-          Сейчас здесь есть меню, состояния, персистентность и место под интеграцию вашего гема.
+          Сейчас здесь есть меню, состояния, персистентность и подключение к вашему CLI_downloader.
 
           Нажми «Скачать», чтобы пройти по стартовому сценарию.
         TEXT

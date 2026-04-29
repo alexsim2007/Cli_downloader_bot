@@ -17,13 +17,28 @@ RSpec.describe CliDownloaderBot::Router do
   end
 
   FakeBot = Struct.new(:api)
+  FakeGateway = Struct.new(:result) do
+    def available?
+      true
+    end
+
+    def description
+      'Тестовый шлюз активен.'
+    end
+
+    def download(_url)
+      result
+    end
+  end
 
   it 'starts download flow and stores the requested url' do
     Dir.mktmpdir do |dir|
       api = FakeApi.new
       bot = FakeBot.new(api)
       store = CliDownloaderBot::SessionStore.new(path: File.join(dir, 'sessions.json'))
-      gateway = CliDownloaderBot::DownloaderGateway::LocalGem.new(gem_path: '/tmp/unknown-gem')
+      gateway = FakeGateway.new(
+        Struct.new(:file_path).new('/tmp/downloads/video.mp4')
+      )
       intake_service = CliDownloaderBot::DownloadIntakeService.new(gateway: gateway)
       logger = Logger.new(File::NULL)
 
@@ -39,11 +54,12 @@ RSpec.describe CliDownloaderBot::Router do
       router.handle(FakeMessage.new('https://example.com/video', FakeChat.new(7)))
 
       expect(api.messages[0][:text]).to include('Пришли ссылку')
-      expect(api.messages[1][:text]).to include('Ссылка сохранена')
+      expect(api.messages[1][:text]).to include('Загрузка завершена')
 
       restored = store.fetch(7)
       expect(restored.state).to eq('idle')
       expect(restored.profile['last_requested_url']).to eq('https://example.com/video')
+      expect(restored.profile['last_downloaded_file']).to eq('/tmp/downloads/video.mp4')
     end
   end
 

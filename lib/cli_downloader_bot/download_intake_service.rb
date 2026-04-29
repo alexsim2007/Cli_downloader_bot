@@ -2,7 +2,7 @@
 
 module CliDownloaderBot
   class DownloadIntakeService
-    Result = Struct.new(:status, :message, keyword_init: true)
+    Result = Struct.new(:status, :message, :file_path, keyword_init: true)
 
     attr_reader :gateway
 
@@ -12,17 +12,21 @@ module CliDownloaderBot
 
     def call(session:, url:)
       session.remember_requested_url(url)
+      result = gateway.download(url)
+      session.profile['last_downloaded_file'] = result.file_path
+      session.append_history('download_completed', file_path: result.file_path)
 
-      message = if gateway.available?
-                  "Ссылка сохранена: #{url}\n" \
-                    'Каркас проекта уже видит локальный гем. Реальное скачивание подключим следующим шагом.'
-                else
-                  "Ссылка сохранена: #{url}\n" \
-                    'Каркас готов, но путь к гему пока не настроен. ' \
-                    'Позже подключим реальное скачивание через CLI_DOWNLOADER_GEM_PATH.'
-                end
+      message = "Загрузка завершена.\n" \
+                "Источник: #{url}\n" \
+                "Файл сохранен: #{result.file_path}"
 
-      Result.new(status: :accepted, message: message)
+      Result.new(status: :success, message: message, file_path: result.file_path)
+    rescue DownloaderGateway::DownloadError => e
+      session.append_history('download_failed', url: url, error: e.message)
+      Result.new(
+        status: :failed,
+        message: "Не удалось скачать файл.\n#{e.message}"
+      )
     end
   end
 end
