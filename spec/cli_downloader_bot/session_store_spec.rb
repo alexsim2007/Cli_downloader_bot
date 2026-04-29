@@ -18,4 +18,22 @@ RSpec.describe CliDownloaderBot::SessionStore do
       expect(restored.history.last['event']).to eq('download_requested')
     end
   end
+
+  it 'recovers from corrupted json by treating it as an empty store' do
+    Dir.mktmpdir do |dir|
+      path = File.join(dir, 'sessions.json')
+      File.write(path, '{broken')
+      store = described_class.new(path: path)
+
+      session = store.fetch(11)
+      expect(session.state).to eq('idle')
+
+      session.transition_to('awaiting_metadata', 'metadata_step' => 'artist')
+      store.save(session)
+
+      restored = described_class.new(path: path).fetch(11)
+      expect(restored.state).to eq('awaiting_metadata')
+      expect(restored.context['metadata_step']).to eq('artist')
+    end
+  end
 end

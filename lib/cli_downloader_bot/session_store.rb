@@ -17,7 +17,7 @@ module CliDownloaderBot
     def save(session)
       data = load_all
       data[session.chat_id] = session.to_h
-      File.write(path, JSON.pretty_generate(data))
+      write_all(data)
     end
 
     private
@@ -25,6 +25,14 @@ module CliDownloaderBot
     def ensure_storage!
       FileUtils.mkdir_p(File.dirname(path))
       File.write(path, '{}') unless File.exist?(path)
+    end
+
+    def write_all(data)
+      tmp_path = "#{path}.tmp"
+      File.write(tmp_path, JSON.pretty_generate(data))
+      File.rename(tmp_path, path)
+    ensure
+      File.delete(tmp_path) if defined?(tmp_path) && File.exist?(tmp_path)
     end
 
     def load_all
