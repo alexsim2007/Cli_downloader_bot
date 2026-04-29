@@ -6,24 +6,21 @@ module CliDownloaderBot
       def handle(message)
         text = text_for(message)
         command = command_for(text)
+        return if handle_global_command(message, command)
 
         case command
         when '/start'
           session.reset!
           send_message(message.chat.id, welcome_text)
-        when '/help', 'Помощь'
-          send_message(message.chat.id, help_text)
         when '/download', 'Скачать'
           session.transition_to('awaiting_url')
           send_message(
             message.chat.id,
-            'Пришли ссылку на файл или видео. Бот попробует сразу скачать файл через CLI_downloader.'
+            'Пришли ссылку на файл или видео. ' \
+            'После загрузки я попрошу metadata: artist, album, title, year.'
           )
         when '/status', 'Статус'
           send_message(message.chat.id, status_text)
-        when '/reset', '/cancel', 'Сбросить'
-          session.reset!
-          send_message(message.chat.id, 'Состояние сброшено. Можно продолжать с чистого шага.')
         else
           handle_unknown(message, text)
         end
@@ -34,20 +31,23 @@ module CliDownloaderBot
       def handle_unknown(message, text)
         if url?(text)
           result = intake_service.call(session: session, url: text)
-          session.reset!
-          send_message(message.chat.id, result.message)
+          begin_metadata_flow(message, result)
           return
         end
 
-        send_message(message.chat.id, 'Это стартовый каркас бота. Нажми «Скачать» или отправь ссылку сразу.')
+        send_message(
+          message.chat.id,
+          'Нажми «Скачать» или отправь ссылку сразу. ' \
+          'Пример: https://example.com/file.mp3'
+        )
       end
 
       def welcome_text
         <<~TEXT
-          База Telegram-бота готова.
-          Сейчас здесь есть меню, состояния, персистентность и подключение к вашему CLI_downloader.
+          Бот готов к загрузке файла.
 
-          Нажми «Скачать», чтобы пройти по стартовому сценарию.
+          Сценарий простой: ссылка -> metadata -> готовый файл.
+          Нажми «Скачать», чтобы начать.
         TEXT
       end
     end
