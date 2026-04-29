@@ -1,0 +1,22 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'fileutils'
+
+root = File.expand_path('..', __dir__)
+env_example = File.join(root, '.env.example')
+env_file = File.join(root, '.env')
+
+Dir.chdir(root) do
+  system('bundle', 'install') || abort('bundle install failed')
+end
+
+%w[storage log tmp].each do |directory|
+  FileUtils.mkdir_p(File.join(root, directory))
+end
+
+FileUtils.cp(env_example, env_file) unless File.exist?(env_file)
+
+puts 'Project is ready.'
+puts '1. Open .env and set TELEGRAM_BOT_TOKEN'
+puts '2. Run bundle exec ruby bin/bot'

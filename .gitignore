@@ -1,0 +1,14 @@
+.bundle/
+.env
+.idea/
+.DS_Store
+
+coverage/
+downloads/
+log/
+tmp/
+
+storage/*.json
+!storage/.gitkeep
+
+vendor/bundle/
