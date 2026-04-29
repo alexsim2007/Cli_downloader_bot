@@ -3,6 +3,7 @@
 module CliDownloaderBot
   class DownloaderGateway
     class DownloadError < Error; end
+    class ProcessingError < Error; end
 
     def self.build(gem_path:, output_directory:)
       return Null.new if gem_path.to_s.strip.empty?
@@ -21,6 +22,11 @@ module CliDownloaderBot
 
       def download(_url)
         raise DownloadError, 'Не задан CLI_DOWNLOADER_GEM_PATH.'
+      end
+
+      def tag_mp3(file_path:, metadata:)
+        raise ProcessingError,
+              "Tagger недоступен для #{file_path}: CLI_DOWNLOADER_GEM_PATH не задан."
       end
     end
 
@@ -48,7 +54,9 @@ module CliDownloaderBot
         ensure_available!
 
         result = fetcher.download(url)
-        raise DownloadError, 'Гем не вернул путь к скачанному файлу.' if result.file_path.to_s.strip.empty?
+        if result.file_path.to_s.strip.empty?
+          raise DownloadError, 'Гем не вернул путь к скачанному файлу.'
+        end
 
         result
       rescue LoadError, NameError => e
@@ -57,6 +65,23 @@ module CliDownloaderBot
         raise
       rescue StandardError => e
         raise DownloadError, e.message
+      end
+
+      def tag_mp3(file_path:, metadata:)
+        ensure_available!
+        load_client!
+
+        tagger_class = client_namespace.const_get(:Tagger)
+        tagger = tagger_class.new
+        tagger.tag(file_path, metadata)
+      rescue LoadError, NameError => e
+        raise ProcessingError,
+              "Не удалось подключить Tagger из CLI_downloader: #{e.message}"
+      rescue ArgumentError => e
+        raise ProcessingError,
+              "Tagger получил неподходящие данные: #{e.message}"
+      rescue StandardError => e
+        raise ProcessingError, e.message
       end
 
       private
