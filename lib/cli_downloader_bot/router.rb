@@ -21,9 +21,10 @@ module CliDownloaderBot
       session_store.save(session)
     rescue StandardError => e
       logger.error("router error: #{e.class}: #{e.message}")
+      recover_session!(session)
       bot.api.send_message(
         chat_id: update.chat.id,
-        text: 'Что-то пошло не так. Каркас сбросил состояние.'
+        text: 'Something went wrong. State was reset, please start again.'
       )
     end
 
@@ -31,6 +32,13 @@ module CliDownloaderBot
 
     def text_message?(update)
       update.respond_to?(:text) && update.respond_to?(:chat)
+    end
+
+    def recover_session!(session)
+      return unless session
+
+      session.reset!
+      session_store.save(session)
     end
 
     def state_for(session)
