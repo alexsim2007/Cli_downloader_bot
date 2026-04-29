@@ -28,6 +28,7 @@ Windows PowerShell:
 bundle install
 Copy-Item .env.example .env
 ```
+Besides, download: https://github.com/Heddge/Ruby_Gem, and add a path in .env file
 
 Set the required environment variables in `.env`:
 
