@@ -21,6 +21,8 @@ module CliDownloaderBot
         output_directory: configuration.downloads_path
       )
       intake_service = DownloadIntakeService.new(gateway: gateway)
+      organizer = Organizer.new(root_path: configuration.downloads_path)
+      file_processing_service = FileProcessingService.new(gateway: gateway, organizer: organizer)
 
       Telegram::Bot::Client.run(configuration.token, logger: configuration.logger) do |bot|
         router = Router.new(
@@ -28,6 +30,7 @@ module CliDownloaderBot
           session_store: session_store,
           gateway: gateway,
           intake_service: intake_service,
+          file_processing_service: file_processing_service,
           logger: configuration.logger
         )
 

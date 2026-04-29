@@ -3,13 +3,14 @@
 module CliDownloaderBot
   module States
     class Base
-      attr_reader :bot, :session, :gateway, :intake_service
+      attr_reader :bot, :session, :gateway, :intake_service, :file_processing_service
 
-      def initialize(bot:, session:, gateway:, intake_service:)
+      def initialize(bot:, session:, gateway:, intake_service:, file_processing_service:)
         @bot = bot
         @session = session
         @gateway = gateway
         @intake_service = intake_service
+        @file_processing_service = file_processing_service
       end
 
       def handle(_message)
@@ -44,13 +45,72 @@ module CliDownloaderBot
         )
       end
 
+      def handle_global_command(message, command)
+        case command
+        when '/help', 'Помощь'
+          send_message(message.chat.id, help_text)
+          true
+        when '/reset', '/cancel', 'Сбросить'
+          session.reset!
+          send_message(
+            message.chat.id,
+            'Состояние сброшено. Можно начать заново.'
+          )
+          true
+        when '/download', 'Скачать'
+          session.transition_to('awaiting_url')
+          send_message(
+            message.chat.id,
+            'Пришли ссылку на файл или видео.'
+          )
+          true
+        else
+          false
+        end
+      end
+
+      def begin_metadata_flow(message, result)
+        if result.status == :failed
+          session.reset!
+          send_message(message.chat.id, result.message)
+          return
+        end
+
+        session.transition_to(
+          'awaiting_metadata',
+          'file_path' => result.file_path,
+          'metadata' => {},
+          'metadata_step' => 'artist'
+        )
+
+        send_message(
+          message.chat.id,
+          "#{result.message}\n\n#{metadata_prompt('artist')}"
+        )
+      end
+
+      def metadata_prompt(field)
+        labels = {
+          'artist' => 'artist',
+          'album' => 'album',
+          'title' => 'title',
+          'year' => 'year'
+        }
+
+        "Отправь #{labels.fetch(field)} или '-' чтобы пропустить."
+      end
+
       def help_text
         <<~TEXT
+          Команды:
           /start - показать меню
-          /download - запросить ссылку
-          /status - показать статус интеграции
+          /download - отправить ссылку на файл
+          /status - показать статус
           /reset - сбросить текущее состояние
           /help - показать помощь
+
+          Сценарий: /start -> /download -> ссылка -> metadata -> result.
+          В metadata можно пропустить поле символом "-".
         TEXT
       end
 
