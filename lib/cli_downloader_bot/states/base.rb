@@ -50,6 +50,9 @@ module CliDownloaderBot
         when '/help', 'Помощь'
           send_message(message.chat.id, help_text)
           true
+        when '/status'
+          send_message(message.chat.id, status_text)
+          true
         when '/reset', '/cancel', 'Сбросить'
           session.reset!
           send_message(
@@ -96,11 +99,13 @@ module CliDownloaderBot
           'title' => 'title',
           'year' => 'year'
         }
+        index = labels.keys.index(field).to_i + 1
 
-        "Отправь #{labels.fetch(field)} или '-' чтобы пропустить."
+        "Step #{index}/4. Send #{labels.fetch(field)} or '-' to skip."
       end
 
       def help_text
+
         <<~TEXT
           Команды:
           /start - показать меню

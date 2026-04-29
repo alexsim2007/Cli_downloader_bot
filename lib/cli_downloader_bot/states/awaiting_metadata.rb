@@ -4,7 +4,7 @@ module CliDownloaderBot
   module States
     class AwaitingMetadata < Base
       FIELDS = %w[artist album title year].freeze
-      SKIP_VALUES = ['', '-', 'skip', 'пропустить'].freeze
+      SKIP_VALUES = ['', '-', 'skip'].freeze
 
       def handle(message)
         text = text_for(message)
@@ -16,7 +16,7 @@ module CliDownloaderBot
           session.reset!
           send_message(
             message.chat.id,
-            'Начинаем заново. Нажми «Скачать» или отправь ссылку.'
+            'Starting over. Press download or send a link.'
           )
         else
           save_value_or_skip(message, text)
@@ -27,6 +27,11 @@ module CliDownloaderBot
 
       def save_value_or_skip(message, text)
         field = current_field
+        if invalid_value?(field, text)
+          send_message(message.chat.id, invalid_value_message(field))
+          return
+        end
+
         metadata = session.context.fetch('metadata', {})
         metadata[field] = text unless skip?(text)
 
@@ -54,6 +59,19 @@ module CliDownloaderBot
 
       def skip?(text)
         SKIP_VALUES.include?(text.to_s.strip.downcase)
+      end
+
+      def invalid_value?(field, text)
+        return false if skip?(text)
+        return false unless field == 'year'
+
+        !text.match?(/\A\d{4}\z/)
+      end
+
+      def invalid_value_message(field)
+        return 'Year should contain 4 digits, for example 2025. Send "-" to skip.' if field == 'year'
+
+        'Invalid value. Please try again.'
       end
     end
   end

@@ -13,7 +13,7 @@ module CliDownloaderBot
           session.reset!
           send_message(
             message.chat.id,
-            'Начинаем заново. Нажми «Скачать» или отправь ссылку.'
+            'Starting over. Press download or send a link.'
           )
         else
           accept_or_repeat(message, text)
@@ -23,10 +23,18 @@ module CliDownloaderBot
       private
 
       def accept_or_repeat(message, text)
+        if text.empty?
+          send_message(
+            message.chat.id,
+            'Link is empty. Send a valid URL, for example: https://example.com/file.mp3'
+          )
+          return
+        end
+
         unless url?(text)
           send_message(
             message.chat.id,
-            'Я сейчас жду именно ссылку. Пример: https://example.com/file.mp3'
+            'I am waiting for a link. Example: https://example.com/file.mp3'
           )
           return
         end

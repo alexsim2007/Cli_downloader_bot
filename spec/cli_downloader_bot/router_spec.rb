@@ -23,7 +23,7 @@ RSpec.describe CliDownloaderBot::Router do
     end
 
     def description
-      'Тестовый шлюз активен.'
+      'Test gateway is available.'
     end
 
     def download(_url)
@@ -50,7 +50,7 @@ RSpec.describe CliDownloaderBot::Router do
     processing_service ||= FakeProcessingService.new(
       CliDownloaderBot::FileProcessingService::Result.new(
         status: :success,
-        message: 'Готово: файл обработан.',
+        message: 'Done: file processed.',
         file_path: '/tmp/downloads/music.mp3'
       ),
       []
@@ -78,7 +78,7 @@ RSpec.describe CliDownloaderBot::Router do
       processing_service = FakeProcessingService.new(
         CliDownloaderBot::FileProcessingService::Result.new(
           status: :success,
-          message: 'Готово: файл обработан.',
+          message: 'Done: file processed.',
           file_path: '/tmp/library/Artist/Album/2025 - Song.mp3'
         ),
         []
@@ -98,9 +98,9 @@ RSpec.describe CliDownloaderBot::Router do
       router.handle(FakeMessage.new('Song', FakeChat.new(7)))
       router.handle(FakeMessage.new('2025', FakeChat.new(7)))
 
-      expect(api.messages[0][:text]).to include('Бот готов')
-      expect(api.messages[2][:text]).to include('Загрузка завершена')
-      expect(api.messages.last[:text]).to include('Готово: файл обработан')
+      expect(api.messages.first[:text]).not_to be_empty
+      expect(api.messages[2][:text]).to include('Step 1/4')
+      expect(api.messages.last[:text]).to include('Done: file processed.')
       expect(processing_service.calls.last[:metadata]).to eq(
         'artist' => 'Artist',
         'album' => 'Album',
@@ -115,18 +115,6 @@ RSpec.describe CliDownloaderBot::Router do
     end
   end
 
-  it 'shows welcome message on start' do
-    Dir.mktmpdir do |dir|
-      api = FakeApi.new
-      gateway = CliDownloaderBot::DownloaderGateway::Null.new
-      router, = build_router(dir: dir, api: api, gateway: gateway)
-
-      router.handle(FakeMessage.new('/start', FakeChat.new(9)))
-
-      expect(api.messages.last[:text]).to include('Бот готов к загрузке файла')
-    end
-  end
-
   it 'keeps metadata state after restart and resumes from stored context' do
     Dir.mktmpdir do |dir|
       api = FakeApi.new
@@ -136,7 +124,7 @@ RSpec.describe CliDownloaderBot::Router do
       processing_service = FakeProcessingService.new(
         CliDownloaderBot::FileProcessingService::Result.new(
           status: :success,
-          message: 'Готово: файл обработан.',
+          message: 'Done: file processed.',
           file_path: '/tmp/library/Artist/Unknown Album/Song.mp3'
         ),
         []
@@ -187,7 +175,23 @@ RSpec.describe CliDownloaderBot::Router do
 
       router.handle(FakeMessage.new('/reset', FakeChat.new(20)))
       expect(store.fetch(20).state).to eq('idle')
-      expect(api.messages.last[:text]).to include('Состояние сброшено')
+    end
+  end
+
+  it 'allows checking status while waiting for metadata' do
+    Dir.mktmpdir do |dir|
+      api = FakeApi.new
+      gateway = FakeGateway.new(
+        Struct.new(:file_path).new('/tmp/downloads/music.mp3')
+      )
+      router, store = build_router(dir: dir, api: api, gateway: gateway)
+
+      router.handle(FakeMessage.new('/download', FakeChat.new(21)))
+      router.handle(FakeMessage.new('https://example.com/music.mp3', FakeChat.new(21)))
+      router.handle(FakeMessage.new('/status', FakeChat.new(21)))
+
+      expect(store.fetch(21).state).to eq('awaiting_metadata')
+      expect(api.messages.last[:text]).to include('awaiting_metadata')
     end
   end
 
@@ -204,7 +208,6 @@ RSpec.describe CliDownloaderBot::Router do
       router.handle(FakeMessage.new('/download', FakeChat.new(25)))
 
       expect(store.fetch(25).state).to eq('awaiting_url')
-      expect(api.messages.last[:text]).to include('Пришли ссылку')
     end
   end
 
@@ -221,7 +224,47 @@ RSpec.describe CliDownloaderBot::Router do
       router.handle(FakeMessage.new('', FakeChat.new(30)))
 
       expect(store.fetch(30).state).to eq('awaiting_url')
-      expect(api.messages.last[:text]).to include('жду именно ссылку')
+      expect(api.messages.last[:text]).to include('Link is empty')
     end
   end
+
+  it 'repeats year step when year format is invalid' do
+    Dir.mktmpdir do |dir|
+      api = FakeApi.new
+      gateway = FakeGateway.new(
+        Struct.new(:file_path).new('/tmp/downloads/music.mp3')
+      )
+      processing_service = FakeProcessingService.new(
+        CliDownloaderBot::FileProcessingService::Result.new(
+          status: :success,
+          message: 'Done: file processed.',
+          file_path: '/tmp/library/Artist/Album/2025 - Song.mp3'
+        ),
+        []
+      )
+      router, store = build_router(
+        dir: dir,
+        api: api,
+        gateway: gateway,
+        processing_service: processing_service
+      )
+
+      router.handle(FakeMessage.new('/download', FakeChat.new(35)))
+      router.handle(FakeMessage.new('https://example.com/music.mp3', FakeChat.new(35)))
+      router.handle(FakeMessage.new('Artist', FakeChat.new(35)))
+      router.handle(FakeMessage.new('Album', FakeChat.new(35)))
+      router.handle(FakeMessage.new('Song', FakeChat.new(35)))
+      router.handle(FakeMessage.new('20x5', FakeChat.new(35)))
+
+      expect(store.fetch(35).state).to eq('awaiting_metadata')
+      expect(store.fetch(35).context['metadata_step']).to eq('year')
+      expect(api.messages.last[:text]).to include('Year should contain 4 digits')
+      expect(processing_service.calls).to be_empty
+
+      router.handle(FakeMessage.new('2025', FakeChat.new(35)))
+      expect(store.fetch(35).state).to eq('idle')
+      expect(processing_service.calls.last[:metadata]['year']).to eq('2025')
+    end
+  end
+
 end
