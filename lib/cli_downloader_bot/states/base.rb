@@ -46,7 +46,6 @@ module CliDownloaderBot
 
       def help_text
         <<~TEXT
-          Команды каркаса:
           /start - показать меню
           /download - запросить ссылку
           /status - показать статус интеграции

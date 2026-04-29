@@ -82,7 +82,7 @@ RSpec.describe CliDownloaderBot::Router do
 
       router.handle(FakeMessage.new('/start', FakeChat.new(9)))
 
-      expect(api.messages.last[:text]).to include('База Telegram-бота готова')
+      expect(api.messages.last[:text]).to include('Нажми «Скачать».')
     end
   end
 end

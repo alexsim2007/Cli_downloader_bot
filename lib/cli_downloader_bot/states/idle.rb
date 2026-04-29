@@ -39,15 +39,12 @@ module CliDownloaderBot
           return
         end
 
-        send_message(message.chat.id, 'Это стартовый каркас бота. Нажми «Скачать» или отправь ссылку сразу.')
+        send_message(message.chat.id, 'Нажми «Скачать» или отправь ссылку сразу.')
       end
 
       def welcome_text
         <<~TEXT
-          База Telegram-бота готова.
-          Сейчас здесь есть меню, состояния, персистентность и подключение к вашему CLI_downloader.
-
-          Нажми «Скачать», чтобы пройти по стартовому сценарию.
+          Нажми «Скачать».
         TEXT
       end
     end
